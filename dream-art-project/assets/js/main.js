@@ -1,3 +1,191 @@
+// Enhanced Dynamic Navbar with Smooth Underline Transitions
+class EnhancedNavigation {
+    constructor() {
+        this.header = document.getElementById('header');
+        this.navLinks = document.querySelectorAll('.nav-link[data-section]');
+        this.sections = document.querySelectorAll('section[id]');
+        this.currentActiveLink = null;
+        this.isScrolling = false;
+        this.scrollTimeout = null;
+
+        this.init();
+    }
+
+    init() {
+        this.setupIntersectionObserver();
+        this.setupScrollListener();
+        this.setupClickHandlers();
+        this.setInitialActiveLink();
+    }
+
+    setupIntersectionObserver() {
+        // More precise intersection observer for section detection
+        const observerOptions = {
+            root: null,
+            rootMargin: `-${this.header ? this.header.offsetHeight : 80}px 0px -50% 0px`,
+            threshold: [0, 0.1, 0.2, 0.3, 0.5]
+        };
+
+        this.sectionObserver = new IntersectionObserver((entries) => {
+            if (this.isScrolling) return;
+
+            let mostVisibleSection = null;
+            let maxVisibility = 0;
+
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > maxVisibility) {
+                    maxVisibility = entry.intersectionRatio;
+                    mostVisibleSection = entry.target;
+                }
+            });
+
+            if (mostVisibleSection) {
+                this.updateActiveNavigation(mostVisibleSection.id);
+            }
+        }, observerOptions);
+
+        this.sections.forEach(section => {
+            this.sectionObserver.observe(section);
+        });
+    }
+
+    setupScrollListener() {
+        let ticking = false;
+
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    this.handleScroll();
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        });
+    }
+
+    handleScroll() {
+        // Set scrolling flag
+        this.isScrolling = true;
+
+        // Clear existing timeout
+        if (this.scrollTimeout) {
+            clearTimeout(this.scrollTimeout);
+        }
+
+        // Reset scrolling flag after scroll ends
+        this.scrollTimeout = setTimeout(() => {
+            this.isScrolling = false;
+        }, 150);
+
+        // Manual section detection for more precision
+        let current = '';
+        const scrollPosition = window.scrollY + (this.header?.offsetHeight || 80) + 100;
+
+        for (let i = this.sections.length - 1; i >= 0; i--) {
+            const section = this.sections[i];
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+
+            if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                current = section.id;
+                break;
+            }
+        }
+
+        // Handle edge cases for first and last sections
+        if (window.scrollY < 100) {
+            current = this.sections[0]?.id || 'home';
+        } else if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 100) {
+            current = this.sections[this.sections.length - 1]?.id || 'contact';
+        }
+
+        if (current) {
+            this.updateActiveNavigation(current);
+        }
+    }
+
+    updateActiveNavigation(activeSection) {
+        // Find the link that should be active
+        const targetLink = Array.from(this.navLinks).find(link =>
+            link.getAttribute('data-section') === activeSection
+        );
+
+        // Only update if there's actually a change
+        if (targetLink && targetLink !== this.currentActiveLink) {
+            // Remove active class from all links
+            this.navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Add active class to target link
+            targetLink.classList.add('active');
+            this.currentActiveLink = targetLink;
+
+            // Add temporary highlight effect
+            this.addHighlightEffect(targetLink);
+        }
+    }
+
+    addHighlightEffect(link) {
+        // Create a temporary glow effect
+        link.style.textShadow = '0 0 8px rgba(219, 47, 47, 0.5)';
+
+        setTimeout(() => {
+            link.style.textShadow = '';
+        }, 600);
+    }
+
+    setupClickHandlers() {
+        this.navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                const targetSection = link.getAttribute('data-section');
+                const targetElement = document.getElementById(targetSection);
+
+                if (targetElement) {
+                    // Set scrolling flag
+                    this.isScrolling = true;
+
+                    // Immediately update active state for better UX
+                    this.updateActiveNavigation(targetSection);
+
+                    // Calculate scroll position
+                    const headerHeight = this.header?.offsetHeight || 80;
+                    const targetPosition = targetElement.offsetTop - headerHeight - 20;
+
+                    // Smooth scroll
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+
+                    // Reset scrolling flag after animation
+                    setTimeout(() => {
+                        this.isScrolling = false;
+                    }, 1000);
+                }
+            });
+        });
+    }
+
+    setInitialActiveLink() {
+        // Set the initial active link based on current scroll position
+        const scrollPosition = window.scrollY;
+
+        if (scrollPosition < 100) {
+            const firstLink = this.navLinks[0];
+            if (firstLink) {
+                firstLink.classList.add('active');
+                this.currentActiveLink = firstLink;
+            }
+        } else {
+            // Trigger a scroll check to set the correct initial state
+            this.handleScroll();
+        }
+    }
+}
+
 // Professional JavaScript for Dream Art Creations Website
 class DreamArtWebsite {
     constructor() {
@@ -12,7 +200,6 @@ class DreamArtWebsite {
         this.closeModalBtn = document.getElementById('closeModal');
         this.callNowBtn = document.getElementById('callNow');
         this.whatsappNowBtn = document.getElementById('whatsappNow');
-        this.emailNowBtn = document.getElementById('emailNow');
 
         this.init();
     }
@@ -21,15 +208,15 @@ class DreamArtWebsite {
         this.setupEventListeners();
         this.setupScrollEffects();
         this.setupSmoothScrolling();
-        this.setupActiveNavigation();
         this.setupAnimations();
+        // REMOVED: this.setupActiveNavigation() - Let EnhancedNavigation handle this
     }
 
     setupEventListeners() {
         // Mobile menu toggle
         this.mobileToggle.addEventListener('click', () => this.toggleMobileMenu());
 
-        // Navigation links
+        // Navigation links (only handle mobile menu closing, not active states)
         this.navLinks.forEach(link => {
             link.addEventListener('click', (e) => this.handleNavClick(e));
         });
@@ -47,7 +234,6 @@ class DreamArtWebsite {
         // Contact buttons in modal
         this.callNowBtn.addEventListener('click', () => this.makeCall());
         this.whatsappNowBtn.addEventListener('click', () => this.openWhatsApp());
-        this.emailNowBtn.addEventListener('click', () => this.sendEmail());
 
         // Close modal when clicking outside
         this.bookingModal.addEventListener('click', (e) => {
@@ -68,8 +254,6 @@ class DreamArtWebsite {
     }
 
     setupScrollEffects() {
-        let lastScrollY = window.scrollY;
-
         window.addEventListener('scroll', () => {
             const currentScrollY = window.scrollY;
 
@@ -86,17 +270,12 @@ class DreamArtWebsite {
             } else {
                 this.scrollToTop.classList.remove('visible');
             }
-
-            // Update active navigation based on scroll position
-            this.updateActiveNavigation();
-
-            lastScrollY = currentScrollY;
         });
     }
 
     setupSmoothScrolling() {
-        // Enhanced smooth scrolling for all internal links
-        document.querySelectorAll('a[href^="#"]').forEach(link => {
+        // Enhanced smooth scrolling for all internal links (but don't interfere with active states)
+        document.querySelectorAll('a[href^="#"]:not(.nav-link)').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const targetId = link.getAttribute('href');
@@ -110,28 +289,6 @@ class DreamArtWebsite {
                         top: targetPosition,
                         behavior: 'smooth'
                     });
-                }
-            });
-        });
-    }
-
-    setupActiveNavigation() {
-        const sections = document.querySelectorAll('section[id]');
-        const navLinks = document.querySelectorAll('.nav-link[data-section]');
-
-        window.addEventListener('scroll', () => {
-            let current = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - this.header.offsetHeight - 50;
-                if (window.scrollY >= sectionTop) {
-                    current = section.getAttribute('id');
-                }
-            });
-
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('data-section') === current) {
-                    link.classList.add('active');
                 }
             });
         });
@@ -184,25 +341,7 @@ class DreamArtWebsite {
         if (window.innerWidth <= 768) {
             this.closeMobileMenu();
         }
-    }
-
-    updateActiveNavigation() {
-        const sections = document.querySelectorAll('section[id]');
-        let current = '';
-
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop - this.header.offsetHeight - 50;
-            if (window.scrollY >= sectionTop) {
-                current = section.getAttribute('id');
-            }
-        });
-
-        this.navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-section') === current) {
-                link.classList.add('active');
-            }
-        });
+        // Let EnhancedNavigation handle the actual navigation
     }
 
     scrollToTopAction() {
@@ -241,12 +380,6 @@ class DreamArtWebsite {
         window.open(`https://wa.me/+94717134000?text=${message}`, '_blank');
     }
 
-    sendEmail() {
-        const subject = encodeURIComponent('Design Service Inquiry');
-        const body = encodeURIComponent('Hi there!\n\nI\'m interested in your graphic design services and would like to discuss my project requirements.\n\nLooking forward to hearing from you!\n\nBest regards');
-        window.location.href = `mailto:dreamartcreation.digitalpaint@gmail.com?subject=${subject}&body=${body}`;
-    }
-
     handleKeyboardNavigation(e) {
         // Close modal with Escape key
         if (e.key === 'Escape') {
@@ -260,8 +393,12 @@ class DreamArtWebsite {
     }
 }
 
-// Initialize the website when DOM is loaded
+// Initialize both navigation systems when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize the enhanced navigation first
+    new EnhancedNavigation();
+
+    // Then initialize the main website functionality
     new DreamArtWebsite();
 
     // Add loading animation
@@ -272,19 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.opacity = '1';
     }, 100);
 });
-
-// Service Worker for PWA capabilities (optional)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-                console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}
 
 // Performance optimization
 window.addEventListener('load', () => {
